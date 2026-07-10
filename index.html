@@ -1,766 +1,504 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  
-  <meta charset="UTF-8" />
-  <title>Narrative Workspace</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    :root {
-      --bg-light: #f5f5f7;
-      --bg-dark: #111317;
-      --text-light: #111317;
-      --text-dark: #f5f5f7;
-      --accent: #4f46e5;
-      --accent-soft: #e0e7ff;
-      --border: #d4d4d8;
-      --danger: #ef4444;
-      --sidebar-width: 260px;
-      --radius: 8px;
-      --shadow-soft: 0 10px 25px rgba(15, 23, 42, 0.12);
-      --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Workspace</title>
 
-    body {
-      margin: 0;
-      font-family: var(--font-main);
-      background: var(--bg-light);
-      color: var(--text-light);
-      display: flex;
-      min-height: 100vh;
-      transition: background 0.2s ease, color 0.2s ease;
-    }
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --surface-color: #ffffff;
+            --text-color: #212529;
+            --border-color: #dee2e6;
+            --primary-color: #0d6efd;
+            --primary-hover: #0b5ed7;
+            --sidebar-width: 260px;
+            --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            --font-size: 18px;
+            --line-height: 1.6;
+            --text-align: left;
+        }
 
-    body.dark {
-      background: var(--bg-dark);
-      color: var(--text-dark);
-    }
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --border-color: #333333;
+            --primary-color: #6f42c1;
+            --primary-hover: #845ef7;
+        }
 
-    body.dark .card {
-      background: #18181b;
-      border-color: #27272a;
-      box-shadow: none;
-    }
+        [data-font="sans"] {
+            --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
 
-    body.dark .sidebar {
-      background: #09090b;
-      border-color: #27272a;
-    }
+        [data-font="serif"] {
+            --font-family: Georgia, "Times New Roman", serif;
+        }
 
-    body.dark .input,
-    body.dark textarea {
-      background: #09090b;
-      border-color: #27272a;
-      color: var(--text-dark);
-    }
+        [data-font="mono"] {
+            --font-family: Consolas, "Courier New", monospace;
+        }
 
-    body.dark .stats-row {
-      background: #18181b;
-      border-color: #27272a;
-    }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-    body.dark .toc-item.active {
-      background: #1d1d20;
-    }
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
 
-    .app {
-      display: flex;
-      flex: 1;
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 24px;
-      gap: 20px;
-      box-sizing: border-box;
-    }
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--surface-color);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            gap: 1rem;
+        }
 
-    @media (max-width: 900px) {
-      .app {
-        flex-direction: column;
-        padding: 16px;
-      }
-    }
+        .sidebar-header {
+            font-weight: bold;
+            font-size: 1.1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-    .sidebar {
-      width: var(--sidebar-width);
-      min-width: 220px;
-      background: #ffffff;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-soft);
-      padding: 16px;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+        .doc-list {
+            list-style: none;
+            overflow-y: auto;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
 
-    .sidebar-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
+        .doc-item {
+            padding: 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: transparent;
+            transition: background 0.2s;
+        }
 
-    .sidebar-title {
-      font-size: 0.95rem;
-      font-weight: 600;
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-      color: #71717a;
-    }
+        .doc-item:hover,
+        .doc-item.active {
+            background-color: var(--border-color);
+        }
 
-    .sidebar-actions {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
+        .doc-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
 
-    .btn {
-      border: none;
-      border-radius: 999px;
-      padding: 6px 12px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--accent);
-      color: #ffffff;
-      transition: background 0.15s ease, transform 0.1s ease,
-        box-shadow 0.15s ease;
-      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
-    }
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 0 0.25rem;
+        }
 
-    .btn:hover {
-      background: #4338ca;
-      transform: translateY(-1px);
-    }
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 2rem;
+            gap: 1rem;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+        }
 
-    .btn.secondary {
-      background: transparent;
-      color: #4b5563;
-      border: 1px solid var(--border);
-      box-shadow: none;
-    }
+        .toolbar,
+        .formatting-toolbar {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0.75rem;
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
 
-    body.dark .btn.secondary {
-      color: #e5e7eb;
-      border-color: #3f3f46;
-    }
+        .formatting-toolbar {
+            justify-content: flex-start;
+        }
 
-    .btn.secondary:hover {
-      background: var(--accent-soft);
-    }
+        .formatting-label {
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
 
-    body.dark .btn.secondary:hover {
-      background: #27272a;
-    }
+        button,
+        select {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--surface-color);
+            color: var(--text-color);
+            cursor: pointer;
+            font-family: inherit;
+        }
 
-    .btn.icon {
-      padding: 4px 8px;
-      border-radius: 999px;
-      font-size: 0.8rem;
-    }
+        button.btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+        }
 
-    .toc-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      max-height: 60vh;
-      overflow-y: auto;
-    }
+        button.btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
 
-    .toc-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 6px 8px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      border: 1px solid transparent;
-      transition: background 0.12s ease, border-color 0.12s ease,
-        transform 0.08s ease;
-    }
+        .title-input {
+            font-size: 2rem;
+            font-weight: bold;
+            border: none;
+            border-bottom: 2px solid transparent;
+            background: transparent;
+            color: var(--text-color);
+            padding: 0.5rem 0;
+            width: 100%;
+            outline: none;
+            font-family: var(--font-family);
+        }
 
-    .toc-item:hover {
-      background: #f4f4f5;
-      border-color: var(--border);
-      transform: translateY(-0.5px);
-    }
+        .title-input:focus {
+            border-bottom-color: var(--primary-color);
+        }
 
-    body.dark .toc-item:hover {
-      background: #18181b;
-      border-color: #27272a;
-    }
+        .writing-canvas {
+            flex-grow: 1;
+            resize: none;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1.5rem;
+            font-size: var(--font-size);
+            line-height: var(--line-height);
+            text-align: var(--text-align);
+            background-color: var(--surface-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
 
-    .toc-item.active {
-      background: var(--accent-soft);
-      border-color: var(--accent);
-    }
+        .writing-canvas:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+        }
 
-    body.dark .toc-item.active {
-      background: #1d1d20;
-      border-color: var(--accent);
-    }
+        .analytics-bar {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.9rem;
+            color: #6c757d;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border-color);
+        }
 
-    .toc-title {
-      flex: 1;
-      margin-right: 8px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .toc-meta {
-      font-size: 0.7rem;
-      color: #9ca3af;
-      white-space: nowrap;
-    }
-
-    .toc-delete {
-      border: none;
-      background: transparent;
-      color: var(--danger);
-      font-size: 0.8rem;
-      cursor: pointer;
-      padding: 0 4px;
-    }
-
-    .main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .top-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .title-input {
-      flex: 1;
-      min-width: 200px;
-    }
-
-    .label {
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: #6b7280;
-      margin-bottom: 4px;
-    }
-
-    .input {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      font-size: 0.95rem;
-      box-sizing: border-box;
-      outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease,
-        background 0.15s ease;
-      background: #ffffff;
-    }
-
-    .input:focus,
-    textarea:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px var(--accent-soft);
-      background: #f9fafb;
-    }
-
-    .mode-toggle {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.8rem;
-      color: #6b7280;
-    }
-
-    .switch {
-      position: relative;
-      width: 40px;
-      height: 20px;
-      border-radius: 999px;
-      background: #e5e7eb;
-      cursor: pointer;
-      transition: background 0.15s ease;
-    }
-
-    .switch-thumb {
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: #ffffff;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-      transition: transform 0.15s ease;
-    }
-
-    body.dark .switch {
-      background: #4b5563;
-    }
-
-    body.dark .switch-thumb {
-      transform: translateX(20px);
-    }
-
-    .card {
-      background: #ffffff;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-soft);
-      padding: 12px;
-      box-sizing: border-box;
-    }
-
-    .editor {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      min-height: 260px;
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 220px;
-      resize: vertical;
-      padding: 10px 12px;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      font-size: 0.95rem;
-      box-sizing: border-box;
-      outline: none;
-      line-height: 1.5;
-      background: #ffffff;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease,
-        background 0.15s ease;
-    }
-
-    .stats-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 8px;
-      padding: 8px 10px;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      background: #f9fafb;
-      font-size: 0.8rem;
-    }
-
-    .stat {
-      display: flex;
-      align-items: baseline;
-      gap: 4px;
-    }
-
-    .stat-label {
-      color: #6b7280;
-    }
-
-    .stat-value {
-      font-weight: 600;
-      color: #111827;
-    }
-
-    body.dark .stat-value {
-      color: #e5e7eb;
-    }
-
-    .bottom-row {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      margin-top: 8px;
-    }
-
-    .alt-render {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.8rem;
-      color: #6b7280;
-    }
-
-    .alt-select {
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: #ffffff;
-      font-size: 0.8rem;
-      cursor: pointer;
-    }
-
-    body.dark .alt-select {
-      background: #09090b;
-      border-color: #27272a;
-      color: #e5e7eb;
-    }
-
-    .export-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .export-row small {
-      font-size: 0.75rem;
-      color: #9ca3af;
-    }
-  </style>
+        .metric-value {
+            font-weight: bold;
+            color: var(--text-color);
+        }
+    </style>
 </head>
+
 <body>
-  <div class="app">
-    <!-- Step 5: Table of Contents / Document hierarchy -->
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-title">Documents</div>
-        <div class="sidebar-actions">
-          <button class="btn icon" id="newDocBtn">+ New</button>
+        <div class="sidebar-header">
+            <span>Documents</span>
+            <button onclick="createNewDocument()" title="Create new document">+</button>
         </div>
-      </div>
-      <ul class="toc-list" id="tocList"></ul>
-      <button class="btn secondary" id="backupJsonBtn">
-        ⬇ Export all as JSON
-      </button>
+
+        <ul class="doc-list" id="docList"></ul>
+
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            <button onclick="exportBackupJSON()">Bulk Backup JSON</button>
+        </div>
     </aside>
 
-    <!-- Main writing area -->
-    <main class="main">
-      <div class="top-row">
-        <div class="title-input">
-          <div class="label">Title</div>
-          <input
+    <main class="main-content">
+        <div class="toolbar">
+            <button onclick="toggleTheme()">Toggle Mode</button>
+            <button class="btn-primary" onclick="downloadTxtFile()">Download .txt</button>
+        </div>
+
+        <!-- Formatting / Police Section -->
+        <div class="formatting-toolbar">
+            <span class="formatting-label">Formatting / Police:</span>
+
+            <select id="fontSelect" onchange="changeFont(this.value)">
+                <option value="sans">Sans-serif</option>
+                <option value="serif">Serif</option>
+                <option value="mono">Monospace</option>
+            </select>
+
+            <select id="fontSizeSelect" onchange="changeFontSize(this.value)">
+                <option value="14px">Small</option>
+                <option value="18px" selected>Medium</option>
+                <option value="22px">Large</option>
+                <option value="28px">Extra Large</option>
+            </select>
+
+            <select id="alignmentSelect" onchange="changeAlignment(this.value)">
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+                <option value="justify">Justify</option>
+            </select>
+
+            <select id="lineSpacingSelect" onchange="changeLineSpacing(this.value)">
+                <option value="1.2">Compact</option>
+                <option value="1.6" selected>Normal</option>
+                <option value="2">Spacious</option>
+            </select>
+        </div>
+
+        <input
             type="text"
             id="titleInput"
-            class="input"
-            placeholder="Untitled document"
-          />
-        </div>
-        <div class="mode-toggle">
-          <span>Light</span>
-          <div class="switch" id="themeSwitch">
-            <div class="switch-thumb"></div>
-          </div>
-          <span>Dark</span>
-        </div>
-      </div>
+            class="title-input"
+            placeholder="Untitled Document"
+            oninput="updateCurrentDocument()"
+        >
 
-      <section class="card editor">
-        <div class="label">Writing canvas</div>
         <textarea
-          id="editor"
-          placeholder="Start writing your narrative..."
+            id="writingCanvas"
+            class="writing-canvas"
+            placeholder="Start writing here..."
+            oninput="processText()"
         ></textarea>
 
-        <!-- Step 3: Analytics metrics -->
-        <div class="stats-row">
-          <div class="stat">
-            <span class="stat-label">Words:</span>
-            <span class="stat-value" id="wordCount">0</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Characters:</span>
-            <span class="stat-value" id="charCount">0</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Density (chars/word):</span>
-            <span class="stat-value" id="density">0</span>
-          </div>
+        <div class="analytics-bar">
+            <div>Words: <span id="wordCount" class="metric-value">0</span></div>
+            <div>Characters: <span id="charCount" class="metric-value">0</span></div>
         </div>
-
-        <div class="bottom-row">
-          <!-- Step 4: Alternate text rendering selection -->
-          <div class="alt-render">
-            <span>Alternate view:</span>
-            <select id="altRenderSelect" class="alt-select">
-              <option value="raw">Raw text</option>
-              <option value="uppercase">Uppercase</option>
-              <option value="lowercase">Lowercase</option>
-              <option value="sentence">Sentence case</option>
-            </select>
-          </div>
-
-          <!-- Step 2 & 6: Local file generation + data portability -->
-          <div class="export-row">
-            <button class="btn secondary" id="downloadTxtBtn">
-              ⬇ Download .txt
-            </button>
-            <small>Exports current document only</small>
-          </div>
-        </div>
-      </section>
     </main>
-  </div>
 
-  <script>
-    // --- State & helpers ---
-    const STORAGE_KEY = "narrativeDocuments_v1";
-    let documents = [];
-    let activeId = null;
+    <script>
+        let documents = JSON.parse(localStorage.getItem("narrative_matrix")) || {};
+        let activeDocId = localStorage.getItem("active_doc_id") || null;
 
-    const titleInput = document.getElementById("titleInput");
-    const editor = document.getElementById("editor");
-    const wordCountEl = document.getElementById("wordCount");
-    const charCountEl = document.getElementById("charCount");
-    const densityEl = document.getElementById("density");
-    const tocList = document.getElementById("tocList");
-    const newDocBtn = document.getElementById("newDocBtn");
-    const downloadTxtBtn = document.getElementById("downloadTxtBtn");
-    const backupJsonBtn = document.getElementById("backupJsonBtn");
-    const themeSwitch = document.getElementById("themeSwitch");
-    const altRenderSelect = document.getElementById("altRenderSelect");
+        window.addEventListener("DOMContentLoaded", () => {
+            restorePreferences();
 
-    function loadFromStorage() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        documents = [];
-        createNewDocument();
-        return;
-      }
-      try {
-        documents = JSON.parse(raw) || [];
-      } catch {
-        documents = [];
-      }
-      if (documents.length === 0) {
-        createNewDocument();
-      } else {
-        activeId = documents[0].id;
-        renderActiveDocument();
-      }
-      renderToc();
-    }
+            if (Object.keys(documents).length === 0) {
+                createNewDocument("First Document");
+            } else {
+                renderSidebar();
 
-    function saveToStorage() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(documents));
-    }
-
-    function createNewDocument() {
-      const id = Date.now().toString();
-      const doc = {
-        id,
-        title: "Untitled document",
-        content: "",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      documents.unshift(doc);
-      activeId = id;
-      renderToc();
-      renderActiveDocument();
-      saveToStorage();
-    }
-
-    function deleteDocument(id) {
-      const idx = documents.findIndex((d) => d.id === id);
-      if (idx === -1) return;
-      documents.splice(idx, 1);
-      if (documents.length === 0) {
-        createNewDocument();
-      } else {
-        activeId = documents[0].id;
-        renderActiveDocument();
-      }
-      renderToc();
-      saveToStorage();
-    }
-
-    function setActiveDocument(id) {
-      activeId = id;
-      renderActiveDocument();
-      renderToc();
-    }
-
-    function getActiveDocument() {
-      return documents.find((d) => d.id === activeId) || null;
-    }
-
-    function renderToc() {
-      tocList.innerHTML = "";
-      documents.forEach((doc) => {
-        const li = document.createElement("li");
-        li.className = "toc-item" + (doc.id === activeId ? " active" : "");
-        li.dataset.id = doc.id;
-
-        const titleSpan = document.createElement("span");
-        titleSpan.className = "toc-title";
-        titleSpan.textContent = doc.title || "Untitled";
-
-        const metaSpan = document.createElement("span");
-        metaSpan.className = "toc-meta";
-        const words = doc.content.trim()
-          ? doc.content.trim().split(/\s+/).length
-          : 0;
-        metaSpan.textContent = `${words}w`;
-
-        const deleteBtn = document.createElement("button");
-        deleteBtn.className = "toc-delete";
-        deleteBtn.textContent = "✕";
-        deleteBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          deleteDocument(doc.id);
+                if (activeDocId && documents[activeDocId]) {
+                    loadDocument(activeDocId);
+                } else {
+                    loadDocument(Object.keys(documents)[0]);
+                }
+            }
         });
 
-        li.appendChild(titleSpan);
-        li.appendChild(metaSpan);
-        li.appendChild(deleteBtn);
+        function restorePreferences() {
+            const savedTheme = localStorage.getItem("theme") || "light";
+            const savedFont = localStorage.getItem("font") || "sans";
+            const savedFontSize = localStorage.getItem("font_size") || "18px";
+            const savedAlignment = localStorage.getItem("text_align") || "left";
+            const savedLineSpacing = localStorage.getItem("line_spacing") || "1.6";
 
-        li.addEventListener("click", () => setActiveDocument(doc.id));
+            document.body.setAttribute("data-theme", savedTheme);
+            document.body.setAttribute("data-font", savedFont);
 
-        tocList.appendChild(li);
-      });
-    }
+            document.documentElement.style.setProperty("--font-size", savedFontSize);
+            document.documentElement.style.setProperty("--text-align", savedAlignment);
+            document.documentElement.style.setProperty("--line-height", savedLineSpacing);
 
-    function renderActiveDocument() {
-      const doc = getActiveDocument();
-      if (!doc) return;
-      titleInput.value = doc.title || "";
-      editor.value = doc.content || "";
-      updateStats(doc.content || "");
-      applyAltRendering();
-    }
+            document.getElementById("fontSelect").value = savedFont;
+            document.getElementById("fontSizeSelect").value = savedFontSize;
+            document.getElementById("alignmentSelect").value = savedAlignment;
+            document.getElementById("lineSpacingSelect").value = savedLineSpacing;
+        }
 
-    // --- Analytics (Step 3) ---
-    function updateStats(text) {
-      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-      const chars = text.length;
-      const density = words > 0 ? (chars / words).toFixed(2) : 0;
+        function createNewDocument(title = "Untitled Document") {
+            const id = "doc_" + Date.now();
 
-      wordCountEl.textContent = words;
-      charCountEl.textContent = chars;
-      densityEl.textContent = density;
-    }
+            documents[id] = {
+                id: id,
+                title: title,
+                content: ""
+            };
 
-    // --- Auto-save (Step 4) ---
-    function syncActiveDocument() {
-      const doc = getActiveDocument();
-      if (!doc) return;
-      doc.title = titleInput.value || "Untitled document";
-      doc.content = editor.value;
-      doc.updatedAt = new Date().toISOString();
-      saveToStorage();
-      renderToc();
-    }
+            saveToStorage();
+            renderSidebar();
+            loadDocument(id);
+        }
 
-    // --- Alternate rendering (Step 4) ---
-    function transformText(text, mode) {
-      switch (mode) {
-        case "uppercase":
-          return text.toUpperCase();
-        case "lowercase":
-          return text.toLowerCase();
-        case "sentence":
-          return text
-            .toLowerCase()
-            .replace(/(^\s*\w|[.!?]\s*\w)/g, (m) => m.toUpperCase());
-        default:
-          return text;
-      }
-    }
+        function loadDocument(id) {
+            if (!documents[id]) return;
 
-    function applyAltRendering() {
-      const doc = getActiveDocument();
-      if (!doc) return;
-      const mode = altRenderSelect.value;
-      const caretPos = editor.selectionStart;
-      const scrollTop = editor.scrollTop;
-      const transformed = transformText(doc.content || "", mode);
-      editor.value = transformed;
-      updateStats(transformed);
-      editor.selectionStart = editor.selectionEnd = caretPos;
-      editor.scrollTop = scrollTop;
-    }
+            activeDocId = id;
+            localStorage.setItem("active_doc_id", id);
 
-    // --- Local file generation (Step 2) ---
-    function downloadTxt() {
-      const doc = getActiveDocument();
-      if (!doc) return;
-      const blob = new Blob([doc.content || ""], {
-        type: "text/plain;charset=utf-8",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const safeTitle = (doc.title || "document").replace(/[^\w\-]+/g, "_");
-      a.href = url;
-      a.download = safeTitle + ".txt";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
+            const doc = documents[id];
 
-    // --- Bulk backup JSON (Step 6) ---
-    function downloadJsonBackup() {
-      const blob = new Blob([JSON.stringify(documents, null, 2)], {
-        type: "application/json;charset=utf-8",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "narrative_matrix.json";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
+            document.getElementById("titleInput").value = doc.title;
+            document.getElementById("writingCanvas").value = doc.content;
 
-    // --- Theme toggle (Step 4 & 6) ---
-    function toggleTheme() {
-      document.body.classList.toggle("dark");
-    }
+            renderSidebar();
+            processText();
+        }
 
-    // --- Event wiring ---
-    titleInput.addEventListener("input", () => {
-      syncActiveDocument();
-    });
+        function updateCurrentDocument() {
+            if (!activeDocId || !documents[activeDocId]) return;
 
-    editor.addEventListener("input", () => {
-      updateStats(editor.value);
-      syncActiveDocument();
-    });
+            const title = document.getElementById("titleInput").value || "Untitled Document";
+            const content = document.getElementById("writingCanvas").value;
 
-    altRenderSelect.addEventListener("change", () => {
-      applyAltRendering();
-    });
+            documents[activeDocId].title = title;
+            documents[activeDocId].content = content;
 
-    newDocBtn.addEventListener("click", () => {
-      createNewDocument();
-    });
+            const item = document.querySelector(`[data-id="${activeDocId}"] .doc-title`);
 
-    downloadTxtBtn.addEventListener("click", () => {
-      downloadTxt();
-    });
+            if (item) {
+                item.textContent = title;
+            }
 
-    backupJsonBtn.addEventListener("click", () => {
-      downloadJsonBackup();
-    });
+            saveToStorage();
+        }
 
-    themeSwitch.addEventListener("click", () => {
-      toggleTheme();
-    });
+        function deleteDocument(id, event) {
+            event.stopPropagation();
 
-    // --- Init ---
-    loadFromStorage();
-  </script>
+            if (Object.keys(documents).length <= 1) {
+                alert("You must keep at least one document.");
+                return;
+            }
+
+            delete documents[id];
+            saveToStorage();
+
+            if (activeDocId === id) {
+                loadDocument(Object.keys(documents)[0]);
+            } else {
+                renderSidebar();
+            }
+        }
+
+        function renderSidebar() {
+            const list = document.getElementById("docList");
+            list.innerHTML = "";
+
+            Object.values(documents).forEach(doc => {
+                const li = document.createElement("li");
+                li.className = `doc-item ${doc.id === activeDocId ? "active" : ""}`;
+                li.setAttribute("data-id", doc.id);
+                li.onclick = () => loadDocument(doc.id);
+
+                const titleSpan = document.createElement("span");
+                titleSpan.className = "doc-title";
+                titleSpan.textContent = doc.title;
+
+                const delBtn = document.createElement("button");
+                delBtn.className = "delete-btn";
+                delBtn.textContent = "×";
+                delBtn.title = "Delete document";
+                delBtn.onclick = event => deleteDocument(doc.id, event);
+
+                li.appendChild(titleSpan);
+                li.appendChild(delBtn);
+                list.appendChild(li);
+            });
+        }
+
+        function processText() {
+            const text = document.getElementById("writingCanvas").value;
+
+            const charCount = text.length;
+            const wordCount = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+
+            document.getElementById("charCount").textContent = charCount;
+            document.getElementById("wordCount").textContent = wordCount;
+
+            updateCurrentDocument();
+        }
+
+        function saveToStorage() {
+            localStorage.setItem("narrative_matrix", JSON.stringify(documents));
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.body.getAttribute("data-theme");
+            const targetTheme = currentTheme === "dark" ? "light" : "dark";
+
+            document.body.setAttribute("data-theme", targetTheme);
+            localStorage.setItem("theme", targetTheme);
+        }
+
+        function changeFont(fontStyle) {
+            document.body.setAttribute("data-font", fontStyle);
+            localStorage.setItem("font", fontStyle);
+        }
+
+        function changeFontSize(size) {
+            document.documentElement.style.setProperty("--font-size", size);
+            localStorage.setItem("font_size", size);
+        }
+
+        function changeAlignment(alignment) {
+            document.documentElement.style.setProperty("--text-align", alignment);
+            localStorage.setItem("text_align", alignment);
+        }
+
+        function changeLineSpacing(spacing) {
+            document.documentElement.style.setProperty("--line-height", spacing);
+            localStorage.setItem("line_spacing", spacing);
+        }
+
+        function downloadTxtFile() {
+            const title = document.getElementById("titleInput").value || "Untitled";
+            const content = document.getElementById("writingCanvas").value;
+
+            const blob = new Blob([content], {
+                type: "text/plain;charset=utf-8"
+            });
+
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `${title.toLowerCase().replace(/[^a-z0-9]/gi, "_")}.txt`;
+            link.click();
+
+            URL.revokeObjectURL(link.href);
+        }
+
+        function exportBackupJSON() {
+            const dataStr =
+                "data:text/json;charset=utf-8," +
+                encodeURIComponent(JSON.stringify(documents, null, 2));
+
+            const downloadAnchor = document.createElement("a");
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `narrative_matrix_backup_${Date.now()}.json`);
+
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+    </script>
 </body>
 </html>
-```
